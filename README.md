@@ -76,6 +76,16 @@ The output flag allows you to save the resulting video of the object tracker run
 
 If you want to run yolov3 set the model flag to `--model yolov3`, upload the yolov3.weights to the 'data' folder and adjust the weights flag in above commands. (see all the available command line flags and descriptions of them in a below section)
 
+### Property SKIP
+
+You can add a property `skip` when running this code. This property makes the yolov4 runs only after N skips.
+Just pass the FLAG `--skip <number>` when execute the code. Default is **20**.
+Example:
+
+```bash
+python object_tracker.py --skip 5 --video ./data/video/test.mp4 --output ./outputs/demo.avi --model yolov4
+```
+
 ## Running the Tracker with YOLOv4-Tiny
 
 The following commands will allow you to run yolov4-tiny model. Yolov4-tiny allows you to obtain a higher speed (FPS) for the tracker at a slight cost to accuracy. Make sure that you have downloaded the tiny weights file and added it to the 'data' folder in order for commands to work!
@@ -87,6 +97,10 @@ python save_model.py --weights ./data/yolov4-tiny.weights --output ./checkpoints
 # Run yolov4-tiny object tracker
 python object_tracker.py --weights ./checkpoints/yolov4-tiny-416 --model yolov4 --video ./data/video/test.mp4 --output ./outputs/tiny.avi --tiny
 ```
+
+### Property SKIP
+
+This FLAG work with yolov4-tiny, on the same logic.
 
 ## Resulting Video
 
