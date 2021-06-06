@@ -23,6 +23,7 @@ from deep_sort import preprocessing, nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
+
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
                     'path to weights file')
@@ -37,6 +38,7 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
+flags.DEFINE_integer('skip', 20, 'value to skip yolo detections')
 
 def main(_argv):
     # Definition of the parameters
@@ -91,6 +93,7 @@ def main(_argv):
         out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
 
     frame_num = 0
+    already_skip = FLAGS.skip
     # while video is running
     while True:
         return_value, frame = vid.read()
@@ -121,16 +124,20 @@ def main(_argv):
                 boxes, pred_conf = filter_boxes(pred[0], pred[1], score_threshold=0.25,
                                                 input_shape=tf.constant([input_size, input_size]))
         else:
-            batch_data = tf.constant(image_data)
-            pred_bbox = infer(batch_data)
-            for key, value in pred_bbox.items():
-                boxes = value[:, :, 0:4]
-                pred_conf = value[:, :, 4:]
+            if (already_skip == FLAGS.skip):
+                yolo_time = time.time()
+                batch_data = tf.constant(image_data)
+                pred_bbox = infer(batch_data)
+                for key, value in pred_bbox.items():
+                    initial_boxes = value[:, :, 0:4]
+                    initial_pred_conf = value[:, :, 4:]
+                print(time.time() - yolo_time)
+                already_skip = 0
 
         boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
-            boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
+            boxes=tf.reshape(initial_boxes, (tf.shape(initial_boxes)[0], -1, 1, 4)),
             scores=tf.reshape(
-                pred_conf, (tf.shape(pred_conf)[0], -1, tf.shape(pred_conf)[-1])),
+                initial_pred_conf, (tf.shape(initial_pred_conf)[0], -1, tf.shape(initial_pred_conf)[-1])),
             max_output_size_per_class=50,
             max_total_size=50,
             iou_threshold=FLAGS.iou,
@@ -157,7 +164,7 @@ def main(_argv):
         class_names = utils.read_class_names(cfg.YOLO.CLASSES)
 
         # by default allow all classes in .names file
-        allowed_classes = list(class_names.values())
+        allowed_classes = ['person']
         
         # custom allowed classes (uncomment line below to customize tracker for only people)
         #allowed_classes = ['person']
@@ -227,6 +234,8 @@ def main(_argv):
         if not FLAGS.dont_show:
             cv2.imshow("Output Video", result)
         
+        already_skip += 1
+
         # if output flag is set, save video file
         if FLAGS.output:
             out.write(result)
